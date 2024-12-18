@@ -27,9 +27,15 @@
     <ClInclude Include="screensaver_4.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Star.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="screensaver_4.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Star.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

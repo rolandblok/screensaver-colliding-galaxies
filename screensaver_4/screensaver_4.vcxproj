@@ -130,10 +130,12 @@
     <ClInclude Include="framework.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="screensaver_4.h" />
+    <ClInclude Include="Star.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="screensaver_4.cpp" />
+    <ClCompile Include="Star.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="screensaver_4.rc" />
