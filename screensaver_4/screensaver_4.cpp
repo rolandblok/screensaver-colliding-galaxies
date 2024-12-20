@@ -242,11 +242,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             OutputDebugStringA(("FPS: " + std::to_string(fps) + "\n").c_str());
 		}
         
-        std::string title = "Screensaver - FPS: " + std::to_string(fps);
+        std::string title = "FPS: " + std::to_string(fps);
         //draw the fps on the screen
         //set the text color to white
         SetTextColor(hdcMem, RGB(255, 255, 255));
         SetBkMode(hdcMem, TRANSPARENT);
+        // change text size
+        HFONT hFont, hOldFont;
+        hFont = CreateFont(10, 0, 0, 0, FW_DONTCARE, FALSE, FALSE, FALSE, ANSI_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Arial");
+        hOldFont = (HFONT)SelectObject(hdcMem, hFont);
+
         TextOutA(hdcMem, 10, 10, title.c_str(), title.size());
         
 
