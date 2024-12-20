@@ -1,13 +1,27 @@
 #include <windows.h>
 #include <iostream>
+#include <string>
+
+#include "Star.h"
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
-int g_iMoveX = 2;
-int g_iMoveY = 2;
-int g_iTextX = 100;
-int g_iTextY = 100;
-const wchar_t* g_szText = L"Hello, scr!";
+
+// Timer IDs
+#define IDT_TIMER_DRAW 1
+#define IDT_TIMER_UPDATE 2
+
+
+// Timer intervals
+#define TIMER_DRAW_INTERVAL 1  
+#define TIMER_UPDATE_INTERVAL 1  
+
+// galaxy
+Universe* universe;
+constexpr int no_galaxies = 3;
+constexpr int no_stars = 1000;
+constexpr int restart_time_s = 15;
+
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -15,7 +29,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     if (lpCmdLine[0] == '/' && (lpCmdLine[1] == 'p' || lpCmdLine[1] == 'P'))
     {
         // Preview mode
-        hWndParent = (HWND)atoi(lpCmdLine + 3);
+        hWndParent = (HWND)strtoull(lpCmdLine + 3, NULL, 10);
     }
 
     WNDCLASS wc = { 0 };
@@ -58,6 +72,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
             TEXT("Screensaver"),        // Window name
             WS_POPUP,                   // Window style
             0, 0,                       // Position
+            //1200,1200,
             GetSystemMetrics(SM_CXSCREEN), // Width
             GetSystemMetrics(SM_CYSCREEN), // Height
             NULL,                       // No parent window
@@ -72,6 +87,10 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
             return 0;
         }
 
+        // do not show mouse
+        ShowCursor(FALSE);
+
+        //ShowWindow(hWnd, nCmdShow);
         ShowWindow(hWnd, SW_SHOWMAXIMIZED);
     }
 
@@ -91,8 +110,15 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     static HDC hdcMem = NULL;
-    static HBITMAP hbmMem = NULL;
-    static HBITMAP hbmOld = NULL;
+    static HBITMAP hbmMem = NULL; // off-screen buffer
+    static HBITMAP hbmOld = NULL; // off-screen buffer
+    static bool mouseDown = false;
+    static int fps = 0;
+    static int fps_count = 0;
+    static ULONGLONG last_fps_ms = 0;
+    static ULONGLONG last_restart_ms = 0;
+    // Create a pixel buffer
+    static DWORD* pixels = NULL;
 
 
     switch (message)
@@ -100,7 +126,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     case WM_CREATE:
     {
-        SetTimer(hWnd, 1, 16, NULL);    // Approximately 60 FPS
+        SetTimer(hWnd, IDT_TIMER_DRAW, TIMER_DRAW_INTERVAL, NULL);
+        SetTimer(hWnd, IDT_TIMER_UPDATE, TIMER_UPDATE_INTERVAL, NULL);
+
         // Initialize double buffering
         HDC hdc = GetDC(hWnd);
         static RECT rect;
@@ -109,32 +137,67 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         hbmMem = CreateCompatibleBitmap(hdc, rect.right, rect.bottom);
         hbmOld = (HBITMAP)SelectObject(hdcMem, hbmMem);
         ReleaseDC(hWnd, hdc);
+
+        pixels = new DWORD[rect.right * rect.bottom];
+
+        fps = 0;
+        fps_count = 0;
+        last_fps_ms = GetTickCount64();
+
+        // Create the universe
+        universe = new Universe(no_galaxies, no_stars, rect.right, rect.bottom);
+
         break;
     }
 
     case WM_TIMER:
     {
-        // detect if key is pressed
+        // detect if any key is pressed
         if (GetAsyncKeyState(VK_ESCAPE) & 0x8000)
         {
             PostQuitMessage(0);
         }
 
-        RECT rect;
-        GetClientRect(hWnd, &rect);
+        // if mouse click-release, create new universe
+        if (GetAsyncKeyState(VK_LBUTTON) & 0x8000)
+		{
+            if (!mouseDown)
+            {
+                mouseDown = true;
+                OutputDebugStringA("Mouse click, create new universe\n");
+                RECT rect;
+                GetClientRect(hWnd, &rect);
+                delete universe;
+                universe = new Universe(no_galaxies, no_stars, rect.right, rect.bottom);
+            }
+        }
+        else {
+            mouseDown = false;
+        }
 
-        // Move the text
-        g_iTextX += g_iMoveX;
-        g_iTextY += g_iMoveY;
+        if (wParam == IDT_TIMER_DRAW)
+        {
+			// Redraw the window
+            InvalidateRect(hWnd, NULL, TRUE);
 
-        // Bounce off the edges
-        if (g_iTextX < 0 || g_iTextX > rect.right - 200)
-            g_iMoveX = -g_iMoveX;
-        if (g_iTextY < 0 || g_iTextY > rect.bottom - 50)
-            g_iMoveY = -g_iMoveY;
-
-        InvalidateRect(hWnd, NULL, TRUE);
-        break;
+        } else if (wParam == IDT_TIMER_UPDATE) {
+            // if duration_s is greater than restart_time_s, create new universe
+            ULONGLONG current_time_ms = GetTickCount64();
+            int duration_ms = (int)(current_time_ms - last_restart_ms);
+            if (duration_ms > restart_time_s * 1000)
+			{
+				OutputDebugStringA("Time to create new universe\n");
+				RECT rect;
+				GetClientRect(hWnd, &rect);
+				delete universe;
+				universe = new Universe(no_galaxies, no_stars, rect.right, rect.bottom);
+                last_restart_ms = current_time_ms;
+			}
+            
+            // Update the universe
+			universe->update();
+        }
+        break; // WM_TIMER
     }
     case WM_PAINT:
     {
@@ -144,19 +207,53 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         // Clear the off-screen buffer
         RECT rect;
         GetClientRect(hWnd, &rect);
-        FillRect(hdcMem, &rect, (HBRUSH)(COLOR_WINDOW + 1));
 
-        // Set text color and background mode
-        SetTextColor(hdcMem, RGB(0, 0, 0));
+        int width = rect.right;
+        int height = rect.bottom;
+
+        BITMAPINFO bmi = {};
+        bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+        bmi.bmiHeader.biWidth = width;
+        bmi.bmiHeader.biHeight = -height; // top-down
+        bmi.bmiHeader.biPlanes = 1;
+        bmi.bmiHeader.biBitCount = 32; // 32-bit color
+        bmi.bmiHeader.biCompression = BI_RGB;
+
+
+        if (pixels != NULL)
+        {
+            // Clear the pixel buffer
+            memset(pixels, 0, width * height * sizeof(DWORD));
+
+            universe->draw(pixels, width, height);
+
+            // Draw the bitmap
+            SetDIBitsToDevice(hdcMem, 0, 0, width, height, 0, 0, 0, height, pixels, &bmi, DIB_RGB_COLORS);
+        }
+
+        // Calculate FPS
+        fps_count++;
+        ULONGLONG current_time_ms = GetTickCount64();
+        if (current_time_ms - last_fps_ms > 1000)
+		{
+            fps = fps_count;
+			last_fps_ms = current_time_ms;
+			fps_count = 0;
+            OutputDebugStringA(("FPS: " + std::to_string(fps) + "\n").c_str());
+		}
+        
+        std::string title = "Screensaver - FPS: " + std::to_string(fps);
+        //draw the fps on the screen
+        //set the text color to white
+        SetTextColor(hdcMem, RGB(255, 255, 255));
         SetBkMode(hdcMem, TRANSPARENT);
-
-        // Draw the text in the off-screen buffer
-        TextOut(hdcMem, g_iTextX, g_iTextY, g_szText, lstrlen(g_szText));
+        TextOutA(hdcMem, 10, 10, title.c_str(), title.size());
+        
 
         // Copy the off-screen buffer to the screen
         BitBlt(hdc, 0, 0, rect.right, rect.bottom, hdcMem, 0, 0, SRCCOPY);
-
         EndPaint(hWnd, &ps);
+
         break;
     }
     case WM_SIZE:
@@ -171,6 +268,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             hbmMem = CreateCompatibleBitmap(GetDC(hWnd), rect.right, rect.bottom);
             hbmOld = (HBITMAP)SelectObject(hdcMem, hbmMem);
         }
+
+        delete[] pixels;
+		pixels = new DWORD[rect.right * rect.bottom];
+
+        OutputDebugStringA(("Window resized to " + std::to_string(rect.right) + "x" + std::to_string(rect.bottom) + "\n").c_str());
+
         break;
     }
     case WM_DESTROY:
@@ -179,6 +282,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         DeleteObject(hbmMem);
         DeleteDC(hdcMem);
         PostQuitMessage(0);
+        delete universe;
+        delete[] pixels;
         break;
 
     default:

@@ -1,24 +1,51 @@
 #pragma once
 
 #include <vector>
+#include <wtypes.h>
 
+#include"vec3.h"
 
+// constant define for the gravitational constant
+constexpr auto G = 25000;
+constexpr auto dt = 0.001;
+constexpr double inner_R = 8;  //pixels
+constexpr double outer_R = 100; // pixels
+constexpr double init_dist = 500; // pixels
+constexpr double init_gv = 800; // pixels per second
+constexpr double star_M = 15.0; // mass of the star
 
 class Star
 {
-	static double G;
-
-	public:
-	Star( double x, double y, double z, double vx, double vy, double vz, double M);
+public:
+	Star( vec3<double> p, vec3<double> v , double M);
 	~Star();
 	void update(std::vector<Star> &stars, double dt);
+	void draw(DWORD* pixels, int width, int height);
 
-	double x; // x position
-	double y; // y position
-	double z; // z position
-	double vx; // x velocity
-	double vy; // y velocity
-	double vz; // z velocity
+
+	vec3<double> p; // position
+	vec3<double> v; // velocity
 	double M; // mass of the star
 };
 
+class Universe
+{
+public:
+	Universe(int no_galaxies, int no_stars_per_galaxy, int w, int h);
+	~Universe();
+	void update();
+	void draw(DWORD* pixels, int width, int height);
+
+private:
+	std::vector<Star> stars;
+	void createGalaxy(int no_stars_per_galaxy, vec3<double> gp, vec3<double> gv);
+	int no_galaxies;
+	int no_stars_per_galaxy;
+	int w, h;
+	ULONGLONG last_update_time_ms;
+	int ups;
+	ULONGLONG last_ups_ms;
+
+
+
+};
