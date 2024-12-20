@@ -12,3 +12,7 @@ Will probably have bugs.
 - then copy to windows/system32 while ignoring all warnings.
 - then enable in display settings
 
+
+
+
+![example collision](example.png)
