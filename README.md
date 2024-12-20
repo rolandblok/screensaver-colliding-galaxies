@@ -1,4 +1,4 @@
-# screensaver_4
+# screensaver_4 : colliding galaxies
 
 Screensaver needed to be made.
 Like the colliding galaxies that I had on x-windows in them olden days.
