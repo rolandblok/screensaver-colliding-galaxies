@@ -57,9 +57,6 @@ Universe::Universe(int no_galaxies, int no_stars_per_galaxy, int w, int h)
 	this->w = w;
 	this->h = h;
 
-	ups = 0;
-	last_ups_ms = GetTickCount64();
-
 	stars = std::vector<Star>();
 
 	// seed randomnumber generator
@@ -78,7 +75,11 @@ Universe::Universe(int no_galaxies, int no_stars_per_galaxy, int w, int h)
 		createGalaxy(no_stars_per_galaxy, gp, gv);
 	}
 
-	last_update_time_ms = GetTickCount64();
+	ups = 0;
+	QueryPerformanceFrequency(&frequency);
+	QueryPerformanceCounter(&last_ups);
+
+
 }
 
 Universe::~Universe()
@@ -87,17 +88,21 @@ Universe::~Universe()
 
 void Universe::update()
 {
-	ULONGLONG current_time_ms = GetTickCount64();
-	last_update_time_ms = current_time_ms;
+	LARGE_INTEGER start;
+	QueryPerformanceCounter(&start);
 
 
 	for (auto &star : stars)
 		star.update(stars, dt);
 
 	ups++;
-	if (current_time_ms - last_ups_ms > 1000)
+	LARGE_INTEGER current_time;
+	QueryPerformanceCounter(&current_time);
+	
+	double elapsed_time_ms = 1000.0 * (current_time.QuadPart - last_ups.QuadPart) / frequency.QuadPart;
+	if (elapsed_time_ms > 1000)
 	{
-		last_ups_ms = current_time_ms;
+		QueryPerformanceCounter(&last_ups);
 		OutputDebugStringA(("ups: " + std::to_string(ups) + "\n").c_str());
 		ups = 0;
 	}

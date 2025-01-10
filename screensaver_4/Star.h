@@ -42,9 +42,8 @@ private:
 	int no_galaxies;
 	int no_stars_per_galaxy;
 	int w, h;
-	ULONGLONG last_update_time_ms;
 	int ups;
-	ULONGLONG last_ups_ms;
+	LARGE_INTEGER last_ups, frequency;
 
 
 

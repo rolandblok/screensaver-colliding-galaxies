@@ -13,14 +13,68 @@ LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
 
 // Timer intervals
-#define TIMER_DRAW_INTERVAL 1  
-#define TIMER_UPDATE_INTERVAL 1  
+#define TIMER_DRAW_INTERVAL 10  
+#define TIMER_UPDATE_INTERVAL 10
 
 // galaxy
 Universe* universe;
 constexpr int no_galaxies = 3;
 constexpr int no_stars = 1000;
 constexpr int restart_time_s = 15;
+
+// window size
+RECT window_rect;
+
+DWORD WINAPI universe_update(PVOID lpParam)
+{
+    LARGE_INTEGER last_restart;
+    LARGE_INTEGER current_time;
+    LARGE_INTEGER frequency; 
+    if (lpParam == NULL)
+    {
+        printf("TimerRoutine lpParam is NULL\n");
+    }
+    else
+    {
+        // get the frequency of the performance counter
+        QueryPerformanceFrequency(&frequency);
+        QueryPerformanceCounter(&last_restart);
+        while (true) {
+            HWND hWnd = (HWND)lpParam;
+
+            // lpParam points to the argument; in this case it is an int
+            // if duration_s is greater than restart_time_s, create new universe
+            LARGE_INTEGER current_time;
+            QueryPerformanceCounter(&current_time);
+            double elapsed_time_s = 1.0 * (current_time.QuadPart - last_restart.QuadPart) / frequency.QuadPart;
+
+            if (elapsed_time_s > 10)
+            {
+                OutputDebugStringA("Time to create new universe\n");
+                
+                // output the rect.right and rect.bottom
+                OutputDebugStringA(("Window resized to " + std::to_string(window_rect.right) + "x" + std::to_string(window_rect.bottom) + "\n").c_str());
+                delete universe;
+                universe = new Universe(no_galaxies, no_stars, window_rect.right, window_rect.bottom);
+                QueryPerformanceCounter(&last_restart);
+            }
+
+            // Update the universe
+            universe->update();
+            // sleep for 
+            //get the current time
+
+            //sleep for TIMER_UPDATE_INTERVAL
+            LARGE_INTEGER current_sleep_time;
+            do {
+				QueryPerformanceCounter(&current_sleep_time);
+			} while (1000 * (current_sleep_time.QuadPart - current_time.QuadPart) / frequency.QuadPart < TIMER_UPDATE_INTERVAL);
+            
+        }
+        
+    }
+
+}
 
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
@@ -38,6 +92,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     wc.lpszClassName = TEXT("ScreensaverClass");
 
     RegisterClass(&wc);
+
+
 
     HWND hWnd;
     if (hWndParent)
@@ -57,9 +113,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         );
 
         // Adjust the window size to fit the preview window
-        RECT rect;
-        GetClientRect(hWndParent, &rect);
-        SetWindowPos(hWnd, NULL, 0, 0, rect.right - rect.left, rect.bottom - rect.top, SWP_NOZORDER | SWP_NOACTIVATE);
+        GetClientRect(hWndParent, &window_rect);
+        SetWindowPos(hWnd, NULL, 0, 0, window_rect.right - window_rect.left, window_rect.bottom - window_rect.top, SWP_NOZORDER | SWP_NOACTIVATE);
     }
     else
     {
@@ -85,14 +140,36 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         {
             MessageBox(NULL, TEXT("Window Creation Failed!"), TEXT("Error"), MB_ICONEXCLAMATION | MB_OK);
             return 0;
-        }
+        } 
+
 
         // do not show mouse
         ShowCursor(FALSE);
 
         //ShowWindow(hWnd, nCmdShow);
         ShowWindow(hWnd, SW_SHOWMAXIMIZED);
-    }
+
+        // make event thread stuff
+        DWORD dwThreadID;
+        HANDLE   thread = CreateThread(
+            NULL,                   // default security attributes
+            0,                      // use default stack size  
+            universe_update,       // thread function name
+            &hWnd,          // argument to thread function 
+            0,                      // use default creation flags 
+            &dwThreadID);   // returns the thread identifier 
+
+
+        // Check the return value for success.
+        // If CreateThread fails, terminate execution. 
+        // This will automatically clean up threads and memory. 
+		if (thread == NULL)
+		{
+			// print error
+            OutputDebugStringA("CreateThread failed\n");
+			ExitProcess(3);
+		}
+      }
 
     
     UpdateWindow(hWnd);
@@ -116,7 +193,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     static int fps = 0;
     static int fps_count = 0;
     static ULONGLONG last_fps_ms = 0;
-    static ULONGLONG last_restart_ms = 0;
+
     // Create a pixel buffer
     static DWORD* pixels = NULL;
 
@@ -131,21 +208,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         // Initialize double buffering
         HDC hdc = GetDC(hWnd);
-        static RECT rect;
-        GetClientRect(hWnd, &rect);
+        
+        GetClientRect(hWnd, &window_rect);
         hdcMem = CreateCompatibleDC(hdc);
-        hbmMem = CreateCompatibleBitmap(hdc, rect.right, rect.bottom);
+        hbmMem = CreateCompatibleBitmap(hdc, window_rect.right, window_rect.bottom);
         hbmOld = (HBITMAP)SelectObject(hdcMem, hbmMem);
         ReleaseDC(hWnd, hdc);
 
-        pixels = new DWORD[rect.right * rect.bottom];
+        pixels = new DWORD[window_rect.right * window_rect.bottom];
 
         fps = 0;
         fps_count = 0;
         last_fps_ms = GetTickCount64();
 
         // Create the universe
-        universe = new Universe(no_galaxies, no_stars, rect.right, rect.bottom);
+        universe = new Universe(no_galaxies, no_stars, window_rect.right, window_rect.bottom);
 
         break;
     }
@@ -155,6 +232,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         // detect if any key is pressed
         if (GetAsyncKeyState(VK_ESCAPE) & 0x8000)
         {
+
             PostQuitMessage(0);
         }
 
@@ -165,10 +243,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             {
                 mouseDown = true;
                 OutputDebugStringA("Mouse click, create new universe\n");
-                RECT rect;
-                GetClientRect(hWnd, &rect);
+               
+                GetClientRect(hWnd, &window_rect);
                 delete universe;
-                universe = new Universe(no_galaxies, no_stars, rect.right, rect.bottom);
+                universe = new Universe(no_galaxies, no_stars, window_rect.right, window_rect.bottom);
             }
         }
         else {
@@ -181,21 +259,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             InvalidateRect(hWnd, NULL, TRUE);
 
         } else if (wParam == IDT_TIMER_UPDATE) {
-            // if duration_s is greater than restart_time_s, create new universe
-            ULONGLONG current_time_ms = GetTickCount64();
-            int duration_ms = (int)(current_time_ms - last_restart_ms);
-            if (duration_ms > restart_time_s * 1000)
-			{
-				OutputDebugStringA("Time to create new universe\n");
-				RECT rect;
-				GetClientRect(hWnd, &rect);
-				delete universe;
-				universe = new Universe(no_galaxies, no_stars, rect.right, rect.bottom);
-                last_restart_ms = current_time_ms;
-			}
-            
-            // Update the universe
-			universe->update();
+            //replaced by TimerRoutine
         }
         break; // WM_TIMER
     }
@@ -205,11 +269,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         HDC hdc = BeginPaint(hWnd, &ps);
 
         // Clear the off-screen buffer
-        RECT rect;
-        GetClientRect(hWnd, &rect);
+        GetClientRect(hWnd, &window_rect);
 
-        int width = rect.right;
-        int height = rect.bottom;
+        int width = window_rect.right;
+        int height = window_rect.bottom;
 
         BITMAPINFO bmi = {};
         bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
@@ -256,7 +319,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         
 
         // Copy the off-screen buffer to the screen
-        BitBlt(hdc, 0, 0, rect.right, rect.bottom, hdcMem, 0, 0, SRCCOPY);
+        BitBlt(hdc, 0, 0, window_rect.right, window_rect.bottom, hdcMem, 0, 0, SRCCOPY);
         EndPaint(hWnd, &ps);
 
         break;
@@ -264,20 +327,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_SIZE:
     {
         // Handle window resizing
-        RECT rect;
-        GetClientRect(hWnd, &rect);
+        GetClientRect(hWnd, &window_rect);
         if (hdcMem)
         {
             SelectObject(hdcMem, hbmOld);
             DeleteObject(hbmMem);
-            hbmMem = CreateCompatibleBitmap(GetDC(hWnd), rect.right, rect.bottom);
+            hbmMem = CreateCompatibleBitmap(GetDC(hWnd), window_rect.right, window_rect.bottom);
             hbmOld = (HBITMAP)SelectObject(hdcMem, hbmMem);
         }
 
         delete[] pixels;
-		pixels = new DWORD[rect.right * rect.bottom];
+		pixels = new DWORD[window_rect.right * window_rect.bottom];
 
-        OutputDebugStringA(("Window resized to " + std::to_string(rect.right) + "x" + std::to_string(rect.bottom) + "\n").c_str());
+        OutputDebugStringA(("Window resized to " + std::to_string(window_rect.right) + "x" + std::to_string(window_rect.bottom) + "\n").c_str());
 
         break;
     }
