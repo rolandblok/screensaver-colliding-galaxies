@@ -72,7 +72,9 @@ Universe::Universe(int no_galaxies, int no_stars_per_galaxy, int w, int h)
 							- init_gv + 2.0 * init_gv * (rand() / (RAND_MAX + 1.0)), 0.0};
 
 
-		createGalaxy(no_stars_per_galaxy, gp, gv);
+		std::vector<Star> starsInGalaxy = createGalaxy(no_stars_per_galaxy, gp, gv);
+		this->stars.insert(this->stars.end(), starsInGalaxy.begin(), starsInGalaxy.end());
+		
 	}
 
 	ups = 0;
@@ -108,35 +110,61 @@ void Universe::update()
 	}
 }
 
-void Universe::createGalaxy(int no_stars_per_galaxy, vec3<double> gp, vec3<double> gv)
+std::vector<Star> Universe::createGalaxy(int no_stars_per_galaxy, vec3<double> gp, vec3<double> gv)
 {
 	// add the black hole
-	double black_hole_M = star_M * no_stars_per_galaxy;
-	Star black_hole(gp, gv, black_hole_M);
-	stars.push_back(black_hole);
+	//double black_hole_M = star_M * no_stars_per_galaxy;
+	//Star black_hole(gp, gv, black_hole_M);
+	//stars.push_back(black_hole);
 
-	double angle_x = PI * (rand() / (RAND_MAX + 1.0));
-	double angle_y = PI * (rand() / (RAND_MAX + 1.0));
+	std::vector<Star> new_stars = std::vector<Star>();
+	vec3<double> galaxy_normal = vec3<double>(0, 0, 1);
 
 	for (int i = 0; i < no_stars_per_galaxy; i++)
 	{
 		double r = inner_R + outer_R * (rand() / (RAND_MAX + 1.0));
-		double V = std::sqrt(G * black_hole_M / r);
 		double theta = TWO_PI * (rand() / (RAND_MAX + 1.0));
 		vec3<double> p = { r * cos(theta), -r * sin(theta), 0 };
-		vec3<double> v = { V * sin(theta), V * cos(theta), 0 };
 
-		p = p.rotateY(angle_y);
-		v = v.rotateY(angle_y);
+		vec3<double> initial_v = vec3<double>();
 
-		p = p.rotateX(angle_x);
-		v = v.rotateX(angle_x);
-
-		p += gp;
-		v += gv;
-
-		stars.push_back(Star(p, v, 0.0));
+		new_stars.push_back(Star(p, initial_v, star_M));
 	}
+
+	vec3<double> center = vec3<double>();
+	double total_mass = 0.0;
+
+	for (auto& star : new_stars) 
+	{
+		center += star.p * star.M;
+		total_mass += star.M;
+	}
+
+	vec3<double> pmm = center / total_mass;
+
+	for (auto& star : new_stars)
+	{
+		vec3<double> v_n = star.p.cross(galaxy_normal).normalize();
+		double V = std::sqrt(G * total_mass / (pmm-star.p).length());
+		star.v = v_n * V;
+	}
+
+	//double angle_x = PI * (rand() / (RAND_MAX + 1.0));
+	//double angle_y = PI * (rand() / (RAND_MAX + 1.0));
+	double angle_x = 0.0;
+	double angle_y = 0.0;
+
+	for (auto& star : new_stars)
+	{
+		star.p = star.p.rotateY(angle_y);
+		star.p = star.p.rotateX(angle_x);
+		star.v = star.v.rotateY(angle_y);
+		star.v = star.v.rotateX(angle_x);
+		//star.v += gv;
+		star.p += gp;
+	}
+
+	return new_stars;
 }
 
 void Universe::draw(DWORD * pixels, int width, int height)

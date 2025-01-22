@@ -6,7 +6,7 @@
 #include"vec3.h"
 
 // constant define for the gravitational constant
-constexpr auto G = 25000;
+constexpr auto G = 2500;
 constexpr auto dt = 0.001;
 constexpr double inner_R = 8;  //pixels
 constexpr double outer_R = 100; // pixels
@@ -38,7 +38,7 @@ public:
 
 private:
 	std::vector<Star> stars;
-	void createGalaxy(int no_stars_per_galaxy, vec3<double> gp, vec3<double> gv);
+	std::vector<Star> createGalaxy(int no_stars_per_galaxy, vec3<double> gp, vec3<double> gv);
 	int no_galaxies;
 	int no_stars_per_galaxy;
 	int w, h;

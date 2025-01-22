@@ -18,7 +18,7 @@ LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
 // galaxy
 Universe* universe;
-constexpr int no_galaxies = 3;
+constexpr int no_galaxies = 1;
 constexpr int no_stars = 1000;
 constexpr int restart_time_s = 15;
 
@@ -74,6 +74,7 @@ DWORD WINAPI universe_update(PVOID lpParam)
         
     }
 
+    return (DWORD)0;
 }
 
 
