@@ -6,8 +6,8 @@
 #include"vec3.h"
 
 // constant define for the gravitational constant
-constexpr auto G = 25000;
-constexpr auto dt = 0.001;
+constexpr double G = 25000;
+constexpr double dt = 0.001;
 constexpr double inner_R = 8;  //pixels
 constexpr double outer_R = 100; // pixels
 constexpr double init_dist = 500; // pixels
@@ -19,7 +19,7 @@ class Star
 public:
 	Star( vec3<double> p, vec3<double> v , double M);
 	~Star();
-	void update(std::vector<Star> &stars, double dt);
+	double update(std::vector<Star> &stars, double dt);
 	void draw(DWORD* pixels, int width, int height);
 
 

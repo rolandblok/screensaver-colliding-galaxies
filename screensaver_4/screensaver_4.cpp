@@ -14,7 +14,7 @@ LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
 // Timer intervals
 #define TIMER_DRAW_INTERVAL 10  
-#define TIMER_UPDATE_INTERVAL 10
+#define TIMER_UPDATE_INTERVAL 2
 
 // galaxy
 Universe* universe;
@@ -48,7 +48,7 @@ DWORD WINAPI universe_update(PVOID lpParam)
             QueryPerformanceCounter(&current_time);
             double elapsed_time_s = 1.0 * (current_time.QuadPart - last_restart.QuadPart) / frequency.QuadPart;
 
-            if (elapsed_time_s > 10)
+            if (elapsed_time_s > restart_time_s)
             {
                 OutputDebugStringA("Time to create new universe\n");
                 
@@ -73,7 +73,7 @@ DWORD WINAPI universe_update(PVOID lpParam)
         }
         
     }
-
+    return (DWORD)0;
 }
 
 
