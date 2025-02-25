@@ -17,10 +17,11 @@ Star::~Star()
 {
 }
 
-void Star::update(std::vector<Star> &stars, double dt_s)
+double Star::update(std::vector<Star> &stars, double dt_s)
 {
 	vec3<double> a = { 0, 0, 0 };
 
+	double total_potential_energy = 0.0;
 	for (auto &star : stars)
 	{
 		if (&star == this)
@@ -34,10 +35,16 @@ void Star::update(std::vector<Star> &stars, double dt_s)
 		double r = sqrt(r2);
 		double F = G * star.M / (r2*r);
 		a += dp * F ;
+
+		total_potential_energy -= G * M * star.M / r;
 	}
 
 	v += a * dt_s;
 	p += v * dt_s;
+
+	double kinetic_energy = 0.5 * M * v.length2();
+
+	return kinetic_energy + 0.5 * total_potential_energy;
 }
 
 
@@ -93,9 +100,12 @@ void Universe::update()
 	LARGE_INTEGER start;
 	QueryPerformanceCounter(&start);
 
-
-	for (auto &star : stars)
-		star.update(stars, dt);
+	double total_energy = 0.0;
+	for (auto& star : stars)
+	{
+		total_energy += star.update(stars, dt);
+	}
+	//OutputDebugStringA(("total_energy: " + std::to_string(total_energy) + "\n").c_str());
 
 	ups++;
 	LARGE_INTEGER current_time;
@@ -108,6 +118,7 @@ void Universe::update()
 		OutputDebugStringA(("ups: " + std::to_string(ups) + "\n").c_str());
 		ups = 0;
 	}
+	OutputDebugStringA(("energy: " + std::to_string(total_energy) + "\n").c_str());
 }
 
 std::vector<Star> Universe::createGalaxy(int no_stars_per_galaxy, vec3<double> gp, vec3<double> gv)
