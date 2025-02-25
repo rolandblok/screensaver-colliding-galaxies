@@ -121,6 +121,44 @@ void Universe::update()
 	OutputDebugStringA(("energy: " + std::to_string(total_energy) + "\n").c_str());
 }
 
+
+std::vector<Star> Universe::createGalaxyBlackHole(int no_stars_per_galaxy, vec3<double> gp, vec3<double> gv)
+{
+	// add the black hole
+	double black_hole_M = star_M * no_stars_per_galaxy;
+	Star black_hole(gp, gv, black_hole_M);
+	stars.push_back(black_hole);
+
+	std::vector<Star> new_stars = std::vector<Star>();
+	vec3<double> galaxy_normal = vec3<double>(0, 0, 1);
+
+	double angle_x = PI * (rand() / (RAND_MAX + 1.0));
+	double angle_y = PI * (rand() / (RAND_MAX + 1.0));
+
+	for (int i = 0; i < no_stars_per_galaxy; i++)
+	{
+		double r = inner_R + outer_R * (rand() / (RAND_MAX + 1.0));
+		double V = std::sqrt(G * black_hole_M / r);
+		double theta = TWO_PI * (rand() / (RAND_MAX + 1.0));
+		vec3<double> p = { r * cos(theta), -r * sin(theta), 0 };
+		vec3<double> v = { V * sin(theta), V * cos(theta), 0 };
+
+		p = p.rotateY(angle_y);
+		v = v.rotateY(angle_y);
+
+		p = p.rotateX(angle_x);
+		v = v.rotateX(angle_x);
+
+		p += gp;
+		v += gv;
+
+		new_stars.push_back(Star(p, v, 0.0));
+
+	}
+	return new_stars;
+
+}
+
 std::vector<Star> Universe::createGalaxy(int no_stars_per_galaxy, vec3<double> gp, vec3<double> gv)
 {
 	// add the black hole

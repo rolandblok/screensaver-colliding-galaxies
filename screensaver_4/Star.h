@@ -41,6 +41,7 @@ public:
 private:
 	std::vector<Star> stars;
 	std::vector<Star> createGalaxy(int no_stars_per_galaxy, vec3<double> gp, vec3<double> gv);
+	std::vector<Star> createGalaxyBlackHole(int no_stars_per_galaxy, vec3<double> gp, vec3<double> gv);
 	int no_galaxies;
 	int no_stars_per_galaxy;
 	int w, h;
