@@ -33,8 +33,8 @@ double Star::update(std::vector<Star> &stars, double dt_s)
 		vec3<double> dp = star.p - p;
 		double r2 = dp.length2();
 		double r = sqrt(r2);
-		double F = G * star.M / (r2*r);
-		a += dp * F ;
+		double F_div_mr = G * star.M  / (r2*r);
+		a += dp * F_div_mr;
 
 		total_potential_energy -= G * M * star.M / r;
 	}
@@ -180,22 +180,24 @@ std::vector<Star> Universe::createGalaxy(int no_stars_per_galaxy, vec3<double> g
 		new_stars.push_back(Star(p, initial_v, star_M));
 	}
 
-	vec3<double> center = vec3<double>();
-	double total_mass = 0.0;
-
-	for (auto& star : new_stars) 
-	{
-		center += star.p * star.M;
-		total_mass += star.M;
-	}
-
-	vec3<double> pmm = center / total_mass;
 
 	for (auto& star : new_stars)
 	{
-		vec3<double> v_n = star.p.cross(galaxy_normal).normalize();
-		double V = std::sqrt(G * total_mass / (pmm-star.p).length());
-		star.v = v_n * V;
+		
+		vec3<double>total_V = vec3<double>(0.0, 0.0, 0.0);
+		for (auto& other_star : new_stars)
+		{
+			if (&star == &other_star)
+				continue;
+			vec3<double> r = (other_star.p - star.p).normalize();
+			vec3<double> v_n = r.cross(galaxy_normal).normalize();
+			double V = std::sqrt(G * other_star.M*star.M / (other_star.p - star.p).length());
+			total_V += v_n * V;
+
+
+		}
+		star.v = total_V;
+
 	}
 
 	//double angle_x = PI * (rand() / (RAND_MAX + 1.0));
