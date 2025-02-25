@@ -11,6 +11,7 @@ LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 #define IDT_TIMER_DRAW 1
 #define IDT_TIMER_UPDATE 2
 
+CRITICAL_SECTION universe_lock;  // Global critical section object
 
 // Timer intervals
 #define TIMER_DRAW_INTERVAL 10  
@@ -18,7 +19,7 @@ LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
 // galaxy
 Universe* universe;
-constexpr int no_galaxies = 3;
+constexpr int no_galaxies = 1;
 constexpr int no_stars = 1000;
 constexpr int restart_time_s = 15;
 
@@ -54,15 +55,23 @@ DWORD WINAPI universe_update(PVOID lpParam)
                 
                 // output the rect.right and rect.bottom
                 OutputDebugStringA(("Window resized to " + std::to_string(window_rect.right) + "x" + std::to_string(window_rect.bottom) + "\n").c_str());
+                EnterCriticalSection(&universe_lock);
                 delete universe;
                 universe = new Universe(no_galaxies, no_stars, window_rect.right, window_rect.bottom);
+                LeaveCriticalSection(&universe_lock);
                 QueryPerformanceCounter(&last_restart);
             }
 
             // Update the universe
+            EnterCriticalSection(&universe_lock);
             universe->update();
-            // sleep for 
+            LeaveCriticalSection(&universe_lock);
+
+			// sleep for nothing, release thread for moment to other threads
+			Sleep(0);
+            
             //get the current time
+            
 
             //sleep for TIMER_UPDATE_INTERVAL
             LARGE_INTEGER current_sleep_time;
@@ -92,7 +101,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     wc.lpszClassName = TEXT("ScreensaverClass");
 
     RegisterClass(&wc);
-
+    InitializeCriticalSection(&universe_lock);
 
 
     HWND hWnd;
@@ -206,6 +215,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SetTimer(hWnd, IDT_TIMER_DRAW, TIMER_DRAW_INTERVAL, NULL);
         SetTimer(hWnd, IDT_TIMER_UPDATE, TIMER_UPDATE_INTERVAL, NULL);
 
+
         // Initialize double buffering
         HDC hdc = GetDC(hWnd);
         
@@ -222,8 +232,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         last_fps_ms = GetTickCount64();
 
         // Create the universe
+        EnterCriticalSection(&universe_lock);
         universe = new Universe(no_galaxies, no_stars, window_rect.right, window_rect.bottom);
-
+        LeaveCriticalSection(&universe_lock);
         break;
     }
 
@@ -245,8 +256,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 OutputDebugStringA("Mouse click, create new universe\n");
                
                 GetClientRect(hWnd, &window_rect);
+                EnterCriticalSection(&universe_lock);
                 delete universe;
                 universe = new Universe(no_galaxies, no_stars, window_rect.right, window_rect.bottom);
+                LeaveCriticalSection(&universe_lock);
             }
         }
         else {

@@ -7,8 +7,8 @@
 
 // constant define for the gravitational constant
 constexpr double G = 25000;
-constexpr double dt = 0.001;
-constexpr double inner_R = 8;  //pixels
+constexpr double dt = 0.00001;
+constexpr double inner_R = 1;  //pixels
 constexpr double outer_R = 100; // pixels
 constexpr double init_dist = 500; // pixels
 constexpr double init_gv = 800; // pixels per second

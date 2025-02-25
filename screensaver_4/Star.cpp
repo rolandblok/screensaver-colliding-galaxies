@@ -116,6 +116,7 @@ void Universe::update()
 		OutputDebugStringA(("ups: " + std::to_string(ups) + "\n").c_str());
 		ups = 0;
 	}
+	OutputDebugStringA(("energy: " + std::to_string(total_energy) + "\n").c_str());
 }
 
 void Universe::createGalaxy(int no_stars_per_galaxy, vec3<double> gp, vec3<double> gv)
