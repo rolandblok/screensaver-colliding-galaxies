@@ -82,6 +82,7 @@ DWORD WINAPI universe_update(PVOID lpParam)
         }
         
     }
+
     return (DWORD)0;
 }
 
